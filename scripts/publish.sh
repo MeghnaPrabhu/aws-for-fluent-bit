@@ -43,33 +43,33 @@ eu-west-3
 eu-north-1
 "
 
-classic_regions_account_id="906394416424"
+classic_regions_account_id="957584016365"
 
 cn_regions="
 cn-north-1
 cn-northwest-1
 "
 
-cn_regions_account_id="128054284489"
+cn_regions_account_id="957584016365"
 
 gov_regions="
 us-gov-east-1
 us-gov-west-1
 "
 
-gov_regions_account_id="161423150738"
+gov_regions_account_id="957584016365"
 
 hongkong_region="ap-east-1"
 
-hongkong_account_id="449074385750"
+hongkong_account_id="957584016365"
 
 bahrain_region="me-south-1"
 
-bahrain_account_id="741863432321"
+bahrain_account_id="957584016365"
 
 gamma_region="us-west-2"
 
-gamma_account_id="626332813196"
+gamma_account_id="957584016365"
 
 DOCKER_HUB_SECRET="com.amazonaws.dockerhub.aws-for-fluent-bit.credentials"
 
