@@ -15,8 +15,11 @@ phases:
       - docker images
 
       # Push the image to ECR in the same account and same region the pipeline is hosted.
-      - docker tag amazon/aws-for-fluent-bit:latest amazon/aws-for-fluent-bit-test:latest
-      - ecs-cli push amazon/aws-for-fluent-bit-test:latest
+      - aws ecr get-login-password --region us-west-2| docker login --username AWS --password-stdin 957584016365.dkr.ecr.us-west-2.amazonaws.com
+      - aws ecr create-repository --repository-name amazon/aws-for-fluent-bit-test --image-scanning-configuration scanOnPush=true --region us-west-2  || true
+      - architecture=$(docker inspect --format='{{.Architecture}}'  amazon/aws-for-fluent-bit)
+      - docker tag amazon/aws-for-fluent-bit:latest 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:$architecture
+      - docker push 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:$architecture
 artifacts:
   files:
     - '**/*'
