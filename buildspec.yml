@@ -20,6 +20,14 @@ phases:
       - architecture=$(docker inspect --format='{{.Architecture}}'  amazon/aws-for-fluent-bit)
       - docker tag amazon/aws-for-fluent-bit:latest 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:$architecture
       - docker push 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:$architecture
+
+       # Create manifest list
+      - export DOCKER_CLI_EXPERIMENTAL=enabled
+      - docker manifest create 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:latest 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:arm64 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:amd64 || true
+      - docker manifest annotate --arch arm64 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:latest 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:arm64 || true
+      - docker manifest annotate --arch amd64 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:latest 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:amd64 || true
+      - docker manifest inspect 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:latest || true
+      - docker manifest push 957584016365.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-for-fluent-bit-test:latest || true 
 artifacts:
   files:
     - '**/*'
