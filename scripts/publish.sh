@@ -192,14 +192,31 @@ publish_ecr() {
 	echo $region
 	echo $account_id
 	export DOCKER_CLI_EXPERIMENTAL=enabled
-    docker manifest create ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:latest amazon/aws-for-fluent-bit:arm64 amazon/aws-for-fluent-bit:amd64 
-    docker manifest annotate --arch arm64 ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:latest amazon/aws-for-fluent-bit:arm64 
-    docker manifest annotate --arch amd64 ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:latest amazon/aws-for-fluent-bit:amd64 
-    docker manifest inspect ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:latest 
-	docker manifest push ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:latest
+	export architectures=("amd64" "arm64")
+	aws ecr get-login-password --region ${region}| docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
+	aws ecr create-repository --repository-name amazon/aws-for-fluent-bit --image-scanning-configuration scanOnPush=true --region ${region} 
+	for i in "${architectures[@]}"
+	do
+		docker tag ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:amd64 \
+			${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:"$i"
+        docker images
+    	docker push ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:"$i"
+    done
+
+    docker manifest create ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION} \
+		${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:arm64 \
+		${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:amd64 
+
+    docker manifest annotate --arch arm64 ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION} \
+		${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:arm64 
+    docker manifest annotate --arch amd64 ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION} \
+		${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:amd64 
+
+ 	docker manifest inspect ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}
+	docker manifest push ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}
 	# push_to_ecr amazon/aws-for-fluent-bit:latest aws-for-fluent-bit:latest ${region} ${account_id}
 	# push_to_ecr amazon/aws-for-fluent-bit:latest "aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}" ${region} ${account_id}
-	# make_repo_public ${region}
+	make_repo_public ${region}
 }
 
 verify_ecr() {

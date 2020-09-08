@@ -14,8 +14,6 @@ phases:
       - docker pull ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:amd64
       - docker pull ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:arm64
       # - 'ecs-cli pull amazon/aws-for-fluent-bit-test:latest'
-      - 'docker tag ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:amd64 amazon/aws-for-fluent-bit:amd64'
-      - 'docker tag ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:arm64 amazon/aws-for-fluent-bit:arm64'
       # List the docker images 
       - docker images
 
