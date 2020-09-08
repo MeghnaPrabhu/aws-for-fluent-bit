@@ -189,9 +189,17 @@ make_repo_public() {
 publish_ecr() {
 	region=${1}
 	account_id=${2}
-	push_to_ecr amazon/aws-for-fluent-bit:latest aws-for-fluent-bit:latest ${region} ${account_id}
-	push_to_ecr amazon/aws-for-fluent-bit:latest "aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}" ${region} ${account_id}
-	make_repo_public ${region}
+	echo $region
+	echo $account_id
+	export DOCKER_CLI_EXPERIMENTAL=enabled
+    docker manifest create ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:latest amazon/aws-for-fluent-bit:arm64 amazon/aws-for-fluent-bit:amd64 
+    docker manifest annotate --arch arm64 ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:latest amazon/aws-for-fluent-bit:arm64 
+    docker manifest annotate --arch amd64 ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:latest amazon/aws-for-fluent-bit:amd64 
+    docker manifest inspect ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:latest 
+	docker manifest push ${account_id}.dkr.ecr.${region}.amazonaws.com/amazon/aws-for-fluent-bit:latest
+	# push_to_ecr amazon/aws-for-fluent-bit:latest aws-for-fluent-bit:latest ${region} ${account_id}
+	# push_to_ecr amazon/aws-for-fluent-bit:latest "aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}" ${region} ${account_id}
+	# make_repo_public ${region}
 }
 
 verify_ecr() {
