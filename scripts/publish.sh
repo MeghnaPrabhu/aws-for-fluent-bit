@@ -178,18 +178,20 @@ create_manifest_list() {
 	export DOCKER_CLI_EXPERIMENTAL=enabled
 	account_id=${1}
 	region=${2}
-
-	docker manifest create ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION} \
+	tag=${3}
+	
+	docker manifest create ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
 		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:arm64 \
 		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:amd64 
 
-    docker manifest annotate --arch arm64 ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION} \
+    docker manifest annotate --arch arm64 ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
 		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:arm64 
-    docker manifest annotate --arch amd64 ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION} \
+    docker manifest annotate --arch amd64 ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
 		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:amd64 
 
- 	docker manifest inspect ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}
-	docker manifest push ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}
+	# sanity check on the debug log.
+ 	docker manifest inspect ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag}
+	docker manifest push ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag}
 }
 
 push_image_ecr() {
@@ -225,7 +227,8 @@ publish_ecr() {
 	
 	push_image_ecr ${account_id} ${region}	
 
-    create_manifest_list ${account_id} ${region}
+    create_manifest_list ${account_id} ${region} ${AWS_FOR_FLUENT_BIT_VERSION}
+	create_manifest_list ${account_id} ${region} "latest"
 
 	make_repo_public ${region}
 }
@@ -240,18 +243,16 @@ verify_ecr() {
 		endpoint=${endpoint}.cn
 	fi
 
-	export DOCKER_CLI_EXPERIMENTAL=enabled
-	docker manifest inspect ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}
 	aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
-	docker pull ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}
-	docker inspect ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}
-	sha1=$(docker inspect --format='{{index .RepoDigests 0}}' ${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION})
+	docker pull ${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit:latest
+	sha1=$(docker inspect --format='{{index .RepoDigests 0}}' ${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit:latest)
 
 	if [ "${is_sync_task}" = "true" ]; then
 		pull_ecr ${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION_DOCKERHUB} ${region}
 		sha2=$(docker inspect --format='{{index .RepoDigests 0}}' ${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION_DOCKERHUB})
 	else
-		sha2=$(docker manifest inspect ${AWS_ACCOUNT}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION} | jq -r  '.manifests[] | select(.platform.architecture=="amd64") .digest')
+		docker pull ${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}
+		sha2=$(docker inspect --format='{{index .RepoDigests 0}}' ${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION})
 	fi
 
 	verify_sha $sha1 $sha2
