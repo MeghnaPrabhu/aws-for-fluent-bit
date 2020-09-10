@@ -71,10 +71,11 @@ gamma_region="us-west-2"
 
 gamma_account_id="957584016365"
 
-DOCKER_HUB_SECRET="com.amazonaws.dockerhub.aws-for-fluent-bit.credentials"
+DOCKER_HUB_SECRET="dockerhub-meghna"
 
 publish_to_docker_hub() {
 	DRY_RUN="${DRY_RUN:-true}"
+	export DOCKER_CLI_EXPERIMENTAL=enabled
 
 	username="$(aws secretsmanager get-secret-value --secret-id $DOCKER_HUB_SECRET --region us-west-2 | jq -r '.SecretString | fromjson.username')"
 	password="$(aws secretsmanager get-secret-value --secret-id $DOCKER_HUB_SECRET --region us-west-2 | jq -r '.SecretString | fromjson.password')"
@@ -90,9 +91,25 @@ publish_to_docker_hub() {
 
 	# Publish to DockerHub only if $DRY_RUN is set to false
 	if [[ "${DRY_RUN}" == "false" ]]; then
-		docker tag ${1} ${2}
-		docker push ${1}
-		docker push ${2}
+		for arch in "${ARCHITECTURES[@]}"
+		do	
+			docker tag amazon/aws-for-fluent-bit:"$arch" meghnaprabhu/aws-for-fluent-bit:"${arch}" 
+			docker push meghnaprabhu/aws-for-fluent-bit:"$arch" 
+		done
+
+		docker manifest create meghnaprabhu/aws-for-fluent-bit:latest \
+			meghnaprabhu/aws-for-fluent-bit:arm64 \
+			meghnaprabhu/aws-for-fluent-bit:arm64
+
+		docker manifest annotate --arch arm64 meghnaprabhu/aws-for-fluent-bit:latest \
+			meghnaprabhu/aws-for-fluent-bit:arm64
+		docker manifest annotate --arch amd64 meghnaprabhu/aws-for-fluent-bit:latest \
+			meghnaprabhu/aws-for-fluent-bit:arm64
+
+		# sanity check on the debug log.
+		docker manifest inspect meghnaprabhu/aws-for-fluent-bit:latest
+		docker manifest push meghnaprabhu/aws-for-fluent-bit:latest	
+
 	else
 		echo "DRY_RUN: docker tag ${1} ${2}"
 		echo "DRY_RUN: docker push ${1}"
@@ -176,18 +193,18 @@ verify_ssm() {
 create_manifest_list() {
 
 	export DOCKER_CLI_EXPERIMENTAL=enabled
-	account_id=${1}
-	region=${2}
 	tag=${3}
 	
 	docker manifest create ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
-		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:arm64 \
-		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:amd64 
+		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:arm64-${AWS_FOR_FLUENT_BIT_VERSION} \
+		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:amd64-${AWS_FOR_FLUENT_BIT_VERSION} 
 
-    docker manifest annotate --arch arm64 ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
-		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:arm64 
-    docker manifest annotate --arch amd64 ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
-		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:amd64 
+    docker manifest annotate --arch arm64-${AWS_FOR_FLUENT_BIT_VERSION} \
+		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
+		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:arm64-${AWS_FOR_FLUENT_BIT_VERSION} 
+    docker manifest annotate --arch amd64-${AWS_FOR_FLUENT_BIT_VERSION} \
+		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
+		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:amd64-${AWS_FOR_FLUENT_BIT_VERSION}  
 
 	# sanity check on the debug log.
  	docker manifest inspect ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag}
@@ -198,13 +215,12 @@ push_image_ecr() {
 	account_id=${1}
 	region=${2}
 
-	export ARCHITECTURES=("amd64" "arm64")
 	for arch in "${ARCHITECTURES[@]}"
 	do
 		docker tag ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:"$arch" \
-			${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:"$arch"
+			${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:"$arch"-${AWS_FOR_FLUENT_BIT_VERSION}
         docker images
-    	docker push ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:"$arch"
+    	docker push ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:"$arch"-${AWS_FOR_FLUENT_BIT_VERSION}
     done
 }
 
@@ -456,8 +472,9 @@ fi
 # Publish using CI/CD pipeline
 # Following scripts will be called only from the CI/CD pipeline
 if [ "${1}" = "cicd-publish" ]; then
+	export ARCHITECTURES=("amd64" "arm64")
 	if [ "${2}" = "dockerhub" ]; then
-		publish_to_docker_hub amazon/aws-for-fluent-bit:latest amazon/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}
+		publish_to_docker_hub 
 	elif [ "${2}" = "us-gov-east-1" ] || [ "${2}" = "us-gov-west-1" ]; then
 		for region in ${gov_regions}; do
 			sync_latest_image ${region} ${gov_regions_account_id}
@@ -477,6 +494,7 @@ fi
 
 # Verify using CI/CD pipeline
 if [ "${1}" = "cicd-verify" ]; then
+	export ARCHITECTURES=("amd64" "arm64")
 	if [ "${2}" = "dockerhub" ]; then
 		verify_dockerhub
 	elif [ "${2}" = "us-gov-east-1" ] || [ "${2}" = "us-gov-west-1" ]; then

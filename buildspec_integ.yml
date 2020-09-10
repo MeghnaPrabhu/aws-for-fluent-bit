@@ -16,15 +16,9 @@ phases:
 
       # Pull the image that we built and pushed in the `Build` stage
       - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
-      - echo pull image from ecr
       - docker pull ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:latest
-      - echo image pulled
-      # List the images to do a double check
-      - docker images
-      - echo add tag
       - docker tag ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test amazon/aws-for-fluent-bit:latest
       - docker images
-      - echo new images
 
     # Command to run the integration test
       - make integ
