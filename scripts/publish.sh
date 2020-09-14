@@ -93,22 +93,12 @@ publish_to_docker_hub() {
 	if [[ "${DRY_RUN}" == "false" ]]; then
 		for arch in "${ARCHITECTURES[@]}"
 		do	
-			docker tag amazon/aws-for-fluent-bit:"$arch" meghnaprabhu/aws-for-fluent-bit:"${arch}" 
-			docker push meghnaprabhu/aws-for-fluent-bit:"$arch" 
+			docker tag ${1}:"$arch" ${2}:"${arch}"-${AWS_FOR_FLUENT_BIT_VERSION} 
+			docker push ${2}:"$arch"-${AWS_FOR_FLUENT_BIT_VERSION}  
 		done
 
-		docker manifest create meghnaprabhu/aws-for-fluent-bit:latest \
-			meghnaprabhu/aws-for-fluent-bit:arm64 \
-			meghnaprabhu/aws-for-fluent-bit:arm64
-
-		docker manifest annotate --arch arm64 meghnaprabhu/aws-for-fluent-bit:latest \
-			meghnaprabhu/aws-for-fluent-bit:arm64
-		docker manifest annotate --arch amd64 meghnaprabhu/aws-for-fluent-bit:latest \
-			meghnaprabhu/aws-for-fluent-bit:arm64
-
-		# sanity check on the debug log.
-		docker manifest inspect meghnaprabhu/aws-for-fluent-bit:latest
-		docker manifest push meghnaprabhu/aws-for-fluent-bit:latest	
+		create_manifest_list ${2} "latest"
+        create_manifest_list ${2} ${AWS_FOR_FLUENT_BIT_VERSION} 
 
 	else
 		echo "DRY_RUN: docker tag ${1} ${2}"
@@ -193,22 +183,23 @@ verify_ssm() {
 create_manifest_list() {
 
 	export DOCKER_CLI_EXPERIMENTAL=enabled
-	tag=${3}
+	tag=${2}
 	
-	docker manifest create ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
-		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:arm64-${AWS_FOR_FLUENT_BIT_VERSION} \
-		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:amd64-${AWS_FOR_FLUENT_BIT_VERSION} 
+	# TODO: Add a way to automatically generate arch images in manifest 
+	docker manifest create ${1}:${tag} \
+		${1}:arm64-${AWS_FOR_FLUENT_BIT_VERSION} \
+		${1}:amd64-${AWS_FOR_FLUENT_BIT_VERSION} 
 
-    docker manifest annotate --arch arm64-${AWS_FOR_FLUENT_BIT_VERSION} \
-		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
-		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:arm64-${AWS_FOR_FLUENT_BIT_VERSION} 
-    docker manifest annotate --arch amd64-${AWS_FOR_FLUENT_BIT_VERSION} \
-		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag} \
-		${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:amd64-${AWS_FOR_FLUENT_BIT_VERSION}  
+	for arch in "${ARCHITECTURES[@]}"
+	do
+    docker manifest annotate --arch "$arch" \
+		${1}:${tag} \
+		${1}:"$arch"-${AWS_FOR_FLUENT_BIT_VERSION} 
+	done 
 
 	# sanity check on the debug log.
- 	docker manifest inspect ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag}
-	docker manifest push ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:${tag}
+ 	docker manifest inspect ${1}:${tag}
+	docker manifest push ${1}:${tag}
 }
 
 push_image_ecr() {
@@ -219,7 +210,6 @@ push_image_ecr() {
 	do
 		docker tag ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:"$arch" \
 			${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:"$arch"-${AWS_FOR_FLUENT_BIT_VERSION}
-        docker images
     	docker push ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:"$arch"-${AWS_FOR_FLUENT_BIT_VERSION}
     done
 }
@@ -243,8 +233,8 @@ publish_ecr() {
 	
 	push_image_ecr ${account_id} ${region}	
 
-    create_manifest_list ${account_id} ${region} ${AWS_FOR_FLUENT_BIT_VERSION}
-	create_manifest_list ${account_id} ${region} "latest"
+    create_manifest_list ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit ${AWS_FOR_FLUENT_BIT_VERSION}
+	create_manifest_list ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit "latest"
 
 	make_repo_public ${region}
 }
@@ -315,7 +305,7 @@ match_two_sha() {
 
 if [ "${1}" = "publish" ]; then
 	if [ "${2}" = "dockerhub" ]; then
-		publish_to_docker_hub amazon/aws-for-fluent-bit:latest amazon/aws-for-fluent-bit:${AWS_FOR_FLUENT_BIT_VERSION}
+		publish_to_docker_hub amazon/aws-for-fluent-bit meghnaprabhu/aws-for-fluent-bit
 	fi
 
 	if [ "${2}" = "aws" ]; then
@@ -474,7 +464,7 @@ fi
 if [ "${1}" = "cicd-publish" ]; then
 	export ARCHITECTURES=("amd64" "arm64")
 	if [ "${2}" = "dockerhub" ]; then
-		publish_to_docker_hub 
+		publish_to_docker_hub  
 	elif [ "${2}" = "us-gov-east-1" ] || [ "${2}" = "us-gov-west-1" ]; then
 		for region in ${gov_regions}; do
 			sync_latest_image ${region} ${gov_regions_account_id}

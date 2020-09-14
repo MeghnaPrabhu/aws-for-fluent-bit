@@ -18,7 +18,6 @@ def validate_test_case(test_name, log_group, log_stream, validator_func):
     response = client.get_log_events(logGroupName=log_group, logStreamName=log_stream)
     # test length
     if len(response['events']) != 1000:
-        print(str(len(response['events'])) + ' events found in CloudWatch')
         sys.exit('TEST_FAILURE: incorrect number of log events found')
 
     counter = 0
@@ -62,7 +61,6 @@ def validate_metric(test_name, metric_namespace, dim_key, dim_value, expected_sa
 
 def metric_exists(metric_namespace, dim_key, dim_value, expected_samples):
     metric_name = get_expected_metric_name()
-    print("metric name: ", metric_name)
     response = metrics_client.get_metric_statistics(
         Namespace=metric_namespace,
         MetricName=metric_name,
@@ -73,7 +71,7 @@ def metric_exists(metric_namespace, dim_key, dim_value, expected_samples):
         Statistics=["SampleCount", "Average"],
         Unit="None",
     )
-    print(response)
+
     total_samples = 0
     for datapoint in response["Datapoints"]:
         total_samples += datapoint["SampleCount"]
