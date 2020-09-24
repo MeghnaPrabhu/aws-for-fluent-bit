@@ -283,19 +283,14 @@ verify_ecr_image_scan() {
 	imageTag=$(aws ecr list-images  --repository-name ${repo_uri} --region ${region} | jq -r '.imageIds[].imageTag' | grep -c ${tag} || echo "0")
 	if [ "$imageTag" = '1' ]; then	
 		aws ecr wait image-scan-complete --repository-name ${repo_uri} --region ${region} --image-id imageTag=${tag}
-		vulnerabilityCount=aws ecr describe-image-scan-findings --repository-name ${repo_uri} --region ${region} --image-id imageTag=${tag} | jq '.imageScanFindings.findings | length'
-		if [ vulnerabilityCount != '0' ] then
-			echo "Uploaded image ${tag} has ${vulnerabilityCount} vulnerabilities. "
-			exit 1
-		fi
-		vulnerabilityCount=aws ecr describe-image-scan-findings --repository-name ${repo_uri} --region ${region} --image-id imageTag=color | jq '.imageScanFindings.findings | length'
-		if [ vulnerabilityCount != '0' ] then
-			echo "Uploaded image ${tag} has ${vulnerabilityCount} vulnerabilities. "
+		vulnerabilityCount=$(aws ecr describe-image-scan-findings --repository-name ${repo_uri} --region ${region} --image-id imageTag=${tag} | jq '.imageScanFindings.findings | length')
+		if [ "$vulnerabilityCount" != '0' ]; then
+			echo "Uploaded image ${tag} has ${vulnerabilityCount} vulnerabilities."
 			exit 1
 		fi
 	else 
 		echo "sleep 120"
-		sleep 120
+		sleep 60
 		verify_ecr_image_scan region repo_uri tag	
 	fi
 	
