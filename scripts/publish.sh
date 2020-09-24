@@ -243,6 +243,9 @@ publish_ecr() {
 	do
 		push_image_ecr ${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/amazon/aws-for-fluent-bit-test:"$arch" \
 			${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit:"$arch"-${AWS_FOR_FLUENT_BIT_VERSION}
+
+		# Added verification for a sanity check even though we are pushing the same image that we scanned in build stage.
+		verify_ecr_image_scan ${region} aws-for-fluent-bit "$arch"-${AWS_FOR_FLUENT_BIT_VERSION} 
 	done
 	
 	create_manifest_list ${account_id}.dkr.ecr.${region}.amazonaws.com/aws-for-fluent-bit ${AWS_FOR_FLUENT_BIT_VERSION}
@@ -289,11 +292,10 @@ verify_ecr_image_scan() {
 			exit 1
 		fi
 	else 
-		echo "sleep 120"
+		echo "sleep 60"
 		sleep 60
 		verify_ecr_image_scan region repo_uri tag	
 	fi
-	
 }
 
 verify_dockerhub() {
