@@ -176,6 +176,7 @@ sync_latest_image() {
 			aws ecr create-repository --repository-name aws-for-fluent-bit --image-scanning-configuration scanOnPush=true --region ${region}  || true
 			push_image_ecr meghnaprabhu/aws-for-fluent-bit:${arch}-${AWS_FOR_FLUENT_BIT_VERSION} \
 				${account_id}.dkr.ecr.${region}.${endpoint}/aws-for-fluent-bit:${arch}-${AWS_FOR_FLUENT_BIT_VERSION}
+			verify_ecr_image_scan ${region} aws-for-fluent-bit "$arch"-${AWS_FOR_FLUENT_BIT_VERSION}
 		fi
 	done
 
