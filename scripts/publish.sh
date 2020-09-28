@@ -289,8 +289,8 @@ verify_ecr_image_scan() {
 		aws ecr start-image-scan --repository-name ${repo_uri} --image-id imageTag=${tag} --region ${region}
 		aws ecr wait image-scan-complete --repository-name ${repo_uri} --region ${region} --image-id imageTag=${tag}
 		severityCount=$(aws ecr describe-image-scan-findings --repository-name ${repo_uri} --region ${region} --image-id imageTag=${tag} | jq '.imageScanFindings.findingSeverityCounts')
-		vulnerabilityHighCount = $(echo $severityCount | grep -c "HIGH" || echo "0")
-		vulnerabilityCriticalCount = $(echo $severityCount | grep -c "CRITICAL" || echo "0")
+		vulnerabilityHighCount = $(echo $severityCount | grep -c "HIGH")
+		vulnerabilityCriticalCount = $(echo $severityCount | grep -c "CRITICAL")
 		if [ "$vulnerabilityHighCount" != '0' || "$vulnerabilityCriticalCount" != '0' ]; then
 			echo "Uploaded image ${tag} has ${vulnerabilityCount} vulnerabilities."
 			exit 1
